@@ -1,0 +1,111 @@
+---
+title: "Statistical inference with the GSS data"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+
+## Setup
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+library(ggplot2)
+library(dplyr)
+library(statsr)
+```
+
+### Load data
+
+Make sure your data and R Markdown files are in the same directory. When loaded
+your data file will be called `gss`. Delete this note when before you submit 
+your work. 
+
+```{r load-data}
+load("gss.Rdata")
+```
+
+
+
+* * *
+
+## Part 1: Data
+
+Since, randomly sampled respondents took the survey, therefore, we can term the results as generalisable. Causality cannot be inferred due to no random assignment.
+
+* * *
+
+## Part 2: Research question
+
+Does there appear to be a relationship between religious preference and working in military service?
+Minorities getting very low chances to serve in military can result in religious descrimination.
+Null Hypothesis: religious preference and working in military service are independent.
+Alternate Hypothesis: religious preference and working in military service are dependent.
+
+* * *
+
+## Part 3: Exploratory data analysis
+
+```{r}
+armed_proportion <- gss %>% filter(!is.na(vetyears)) %>%
+  group_by(vetyears) %>%
+  summarise(count=n())
+armed_proportion
+```
+
+More than 50% of the population didn't respond about working in military service. People serving in army for 2 to 4 years are high with 9.7 %, as compared to people working less than 2 years with 3.7 % and people working for more than 4 years with 3.8 %. Majority of the respondents didn't serve the army with 82.6 %.
+
+```{r}
+armed_proportion <- armed_proportion %>% mutate(proportion = count/sum(count))
+ggplot(data=armed_proportion,aes(x=vetyears,y=count)) + geom_bar(stat="identity")
+
+```
+
+```{r}
+religion_proportion <- gss %>% filter(!is.na(relig)) %>%
+  group_by(relig) %>%
+  summarise(count=n())
+religion_proportion <- religion_proportion %>% mutate(proportion = count/sum(count))
+religion_proportion
+```
+The table of religious preferences reflects that Protestant is the largest religion to be preferred by the population with 59 % of the sample population. Catholic with 24.5 % and Jewish with 2 % are preferred next. 
+
+```{r}
+ggplot(data=religion_proportion,aes(x=relig,y=count)) + geom_bar(stat="identity")+ theme(axis.text.x=element_text(angle=90, hjust=1))
+
+```
+
+```{r}
+rel_vs_military <- table(gss$vetyears, gss$relig)
+rel_vs_military
+
+```
+The table shows the count for each religion with respect to the time period spent working in military service. Some respondents never worked, some worked for a few time and some worked for more than 4 years. We can clearly see that minority religious individuals haven't worked too much in military. Is it religious discrimination that stops the minorities to serve the American Army?
+
+* * *
+
+## Part 4: Inference
+
+Since, we are working with 2 categorical variables with one atleast having more than 2 levels, therefore, a chi-squared independence test will be used. The observed counts are compared with the expected counts. Chi squared test along with degrees of freedom will be used to calculate p-value to conclude the relationship between two  categorical variables.
+
+The requirement for a chi-square test are as follows:
+1.Independence: Since, USA is a large populated country and sample size is less than 10 % of the entire population, we can conclude that samples are independent due to random sampling without replacement. 
+
+2.Sample Size: Each particular cell must have atleast 5 expected cases which isn't true here for all cells. Therefore, we will calculate p-value using simulation.
+
+```{r}
+chisq <- chisq.test(rel_vs_military)
+round(chisq$expected, 1)
+```
+```{r}
+chisq2 <- chisq.test(rel_vs_military, simulate.p.value= TRUE, B=100000)
+round(rel_vs_military - chisq2$expected, 1)
+```
+```{r}
+chisq2$p.value
+```
+
+Since, the p-value is greater than 0.05, therefore there is no association between religious preferance and working in military service.
+Hypothesis testing and confidence interval cannot be applied to this data set because we are dealing with more than 1 categorical variables with multiple levels.
